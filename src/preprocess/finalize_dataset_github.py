@@ -21,10 +21,22 @@ for record in records:
     # Create new record with desired fields
     new_record = {}
     
-    # Copy fields we want to keep
-    for key in ['issue_number', 'title', 'body_clean', 'labels', 'created_at', 'state', 'comments']:
+    # Copy fields we want to keep (excluding emojis)
+    for key in ['issue_number', 'title', 'body_clean', 'labels', 'created_at', 'state']:
         if key in record:
             new_record[key] = record[key]
+    
+    # Process comments: remove emojis field from each comment
+    if 'comments' in record:
+        cleaned_comments = []
+        for comment in record['comments']:
+            cleaned_comment = {
+                'author': comment.get('author'),
+                'created_at': comment.get('created_at'),
+                'body_clean': comment.get('body_clean')
+            }
+            cleaned_comments.append(cleaned_comment)
+        new_record['comments'] = cleaned_comments
     
     # Determine final_category: prefer category_llm if present, else use category
     if 'category_llm' in record and record['category_llm']:
