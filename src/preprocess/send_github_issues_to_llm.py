@@ -360,6 +360,88 @@ def main():
     print(f"Total relabeled in this run: {relabeled_count}/{len(records_to_relabel)}")
     print(f"Total API requests: {request_count_day}")
     print(f"Output saved to: {output_file}")
+    
+    # Show sanity statistics
+    print_sanity_stats(output_file)
+
+def print_sanity_stats(file_path):
+    """Print sanity check statistics for the relabeled data."""
+    from collections import Counter, defaultdict
+    
+    print("\n" + "="*80)
+    print("SANITY CHECK STATISTICS")
+    print("="*80)
+    
+    # Read the relabeled JSONL file
+    records = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            records.append(json.loads(line))
+    
+    print(f"\nTotal records: {len(records)}")
+    
+    # 1. Count records for each category
+    category_counts = Counter(record['category'] for record in records)
+    print("\n📊 Distribution of 'category':")
+    for cat, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"  {cat}: {count}")
+    
+    # 2. Count how many records have category_llm
+    records_with_llm = [r for r in records if 'category_llm' in r and r['category_llm']]
+    print(f"\n✅ Records with 'category_llm': {len(records_with_llm)} out of {len(records)}")
+    
+    # 3. Count mismatches (excluding unlabeled as original category)
+    mismatches = [r for r in records_with_llm 
+                  if r['category'] != r['category_llm'] and r['category'] != 'unlabeled']
+    
+    records_with_llm_non_unlabeled = [r for r in records_with_llm if r['category'] != 'unlabeled']
+    
+    if len(records_with_llm_non_unlabeled) > 0:
+        match_rate = ((len(records_with_llm_non_unlabeled) - len(mismatches)) / len(records_with_llm_non_unlabeled) * 100)
+    else:
+        match_rate = 0.0
+    
+    print(f"\n❌ Records with mismatches (category != category_llm, excluding unlabeled): {len(mismatches)} out of {len(records_with_llm_non_unlabeled)}")
+    print(f"   Match rate (excluding unlabeled): {match_rate:.2f}%")
+    
+    # 4. Distribution of mismatches
+    if mismatches:
+        print("\n🔍 Mismatch Distribution (category -> category_llm):")
+        mismatch_patterns = Counter((r['category'], r['category_llm']) for r in mismatches)
+        for (orig, llm), count in sorted(mismatch_patterns.items(), key=lambda x: x[1], reverse=True):
+            print(f"  {orig:30} -> {llm:30} : {count}")
+    
+    # 5. Distribution of category_llm
+    category_llm_counts = Counter(record['category_llm'] for record in records_with_llm)
+    print("\n📊 Distribution of 'category_llm':")
+    for cat, count in sorted(category_llm_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"  {cat}: {count}")
+    
+    # 6. Confusion matrix style view
+    print("\n📋 Summary by original category:")
+    category_analysis = defaultdict(lambda: {'total': 0, 'has_llm': 0, 'matches': 0, 'mismatches': 0})
+    for record in records:
+        cat = record['category']
+        category_analysis[cat]['total'] += 1
+        if 'category_llm' in record and record['category_llm']:
+            category_analysis[cat]['has_llm'] += 1
+            if record['category'] == record['category_llm']:
+                category_analysis[cat]['matches'] += 1
+            elif record['category'] != 'unlabeled':  # Only count as mismatch if not unlabeled
+                category_analysis[cat]['mismatches'] += 1
+    
+    for cat in sorted(category_analysis.keys()):
+        stats = category_analysis[cat]
+        # For unlabeled, show how many got labeled (don't calculate match rate)
+        if cat == 'unlabeled':
+            print(f"\n  {cat}:")
+            print(f"    Total: {stats['total']}, Has LLM: {stats['has_llm']}")
+            print(f"    (All LLM labels for unlabeled records are considered correct)")
+        else:
+            match_rate = (stats['matches'] / stats['has_llm'] * 100) if stats['has_llm'] > 0 else 0
+            print(f"\n  {cat}:")
+            print(f"    Total: {stats['total']}, Has LLM: {stats['has_llm']}, Matches: {stats['matches']}, Mismatches: {stats['mismatches']}")
+            print(f"    Match rate: {match_rate:.2f}%")
 
 if __name__ == "__main__":
     main()
