@@ -1,15 +1,3 @@
-# import time
-# from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-
-# model_name = "BAAI/bge-m3"
-# model_kwargs = {"device": "cpu", "trust_remote_code": True}
-# encode_kwargs = {"normalize_embeddings": True}
-# hf = HuggingFaceBgeEmbeddings(
-#     model_name=model_name, model_kwargs=model_kwargs, encode_kwargs=encode_kwargs
-# )
-# st = time.time()
-# embedding = hf.embed_query("hi this is harrison")
-# print(time.time() - st)
 
 '''
 insight_id	VARCHAR (PK)	"langchain_b1_tech_03"
@@ -104,7 +92,7 @@ def build_rows_from_one_batch(
             "insight_type": "business",
             "insight_index": int(i),
             "insight_text": (text or "").strip(),
-            "embedding": txt_emb
+            "insight_vector": txt_emb
         })
 
     for i, text in enumerate(batch_json.get("technical_insights", []), start=1):
@@ -116,7 +104,7 @@ def build_rows_from_one_batch(
             "insight_type": "technical",
             "insight_index": int(i),
             "insight_text": (text or "").strip(),
-            "embedding": txt_emb
+            "insight_vector": txt_emb
         })
 
     return rows
