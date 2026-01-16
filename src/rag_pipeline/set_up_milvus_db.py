@@ -122,6 +122,18 @@ def insert_to_collection_2(client, collection_name, data):
         data=data
     )
 
+def create_index_for_vectors(client):
+    index_params = MilvusClient.prepare_index_params()
+    index_params.add_index(
+        field_name="insight_vector",
+        metric_type="COSINE",
+        index_type="IVF_FLAT",
+        index_name="vector_index",
+    )
+    client.create_index(
+        collection_name="issue_insights",
+        index_params=index_params,
+    )
 
 if __name__ == "__main__":
     client = create_database()
@@ -138,6 +150,7 @@ if __name__ == "__main__":
     with open(collection_2_data_path, "r") as f:
         data = json.load(f)
     insert_to_collection_2(client, "issue_insights", data)
+    create_index_for_vectors(client)
 
 
     
