@@ -96,8 +96,24 @@ def create_schema_for_collection_2():
     schema.add_field(field_name="insight_type", datatype=DataType.VARCHAR, max_length=512)
     schema.add_field(field_name="insight_index", datatype=DataType.INT64)
     schema.add_field(field_name="insight_text", datatype=DataType.VARCHAR, max_length=65535)
-    schema.add_field(field_name="insight_vector", datatype=DataType.VARCHAR, max_length=65535)
+    schema.add_field(field_name="insight_vector", datatype=DataType.FLOAT_VECTOR, dim=1024)
     return schema
+
+def drop_collection_2(client):
+    client.drop_collection(
+        collection_name="issue_insights"
+    )
+
+
+def create_collection_2(client, schema):
+    client.create_collection(
+        collection_name="issue_insights",
+        schema=schema,
+    )
+    res = client.get_load_state(
+        collection_name="issue_insights"
+    )
+    print(res)
 
 
 def insert_to_collection_2(client, collection_name, data):
@@ -116,6 +132,8 @@ if __name__ == "__main__":
         data = json.load(f)
     insert_to_collection_1(client, "issue_batches", data)
 
+    schema = create_schema_for_collection_2()
+    create_collection_2(client, schema)
     collection_2_data_path = "../../data/processed/collection_2.json"
     with open(collection_2_data_path, "r") as f:
         data = json.load(f)
