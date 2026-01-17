@@ -1,0 +1,9 @@
+fastapi 
+uvicorn 
+pymilvus 
+pymilvus[milvus-lite]
+langchain 
+langchain-community 
+torch 
+transformers
+sentence-transformers
