@@ -1,4 +1,5 @@
 from trl import SFTConfig, SFTTrainer
+from datasets import load_dataset
 from model import get_model
 
 def get_trainer():
@@ -42,15 +43,32 @@ def get_trainer():
     )
     model = get_model()
     
+    train_dataset = load_dataset(
+        "json",
+        data_files="chat_finetune_train.json",
+        split="train",
+    )
+
+    eval_dataset = load_dataset(
+        "json",
+        data_files="chat_finetune_val.json",
+        split="train",
+    )
+
+    # Sanity check
+    assert "messages" in train_dataset.column_names
+    assert "messages" in eval_dataset.column_names
+
     tokenizer = model.tokenizer
     config = model.peft_config
 
     trainer = SFTTrainer(
-        model=model.base_model.model, # the underlying Phi-3 model
+        model=model, # the underlying Phi-3 model
         peft_config=config,  # added to fix issue in TRL>=0.20
         processing_class=tokenizer,
         args=sft_config,
-        train_dataset=dataset,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
     )
 
     return trainer
