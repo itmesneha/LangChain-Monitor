@@ -41,7 +41,7 @@ def get_trainer():
         # ensures bf16 (the new default) is only used when it is actually available
         bf16=torch.cuda.is_bf16_supported(including_emulation=False)
     )
-    model = get_model()
+    model = get_model(device='cuda')
     
     train_dataset = load_dataset(
         "json",
