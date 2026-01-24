@@ -1,3 +1,4 @@
+import json
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from pymilvus import MilvusClient
 
@@ -119,6 +120,31 @@ def build_llm_context_text_only(
         }
     }
 
+def build_llm_input(
+    repo: str,
+    technical_insights: list[str],
+    business_insights: list[str] | None = None,
+    task: str = "Explain the issues and recommend practical next steps for the user.",
+):
+    """
+    Build the final JSON payload sent to the LLM.
+    """
+    insights = []
+
+    # Combine insights (technical first, business next)
+    if technical_insights:
+        insights.extend(technical_insights)
+
+    if business_insights:
+        insights.extend(business_insights)
+
+    return {
+        "repo": repo,
+        "insights": insights,
+        "task": task,
+    }
+
+
 if __name__=="__main__":
     client = get_client()
     load_issue_insights_collection(client)
@@ -128,4 +154,11 @@ if __name__=="__main__":
     context = build_llm_context_text_only(
         client, embedder, query, repo="langchain"
     )
-    print(context)
+    llm_input = build_llm_input(
+        repo="langchain",
+        technical_insights=context["context"]["technical_insights"],
+        business_insights=context["context"]["business_insights"],
+        task="Explain the issues and recommend practical next steps for the user.",
+    )
+    print(json.dumps(llm_input, indent=2))
+
