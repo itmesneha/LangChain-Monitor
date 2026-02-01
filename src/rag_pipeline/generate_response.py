@@ -1,6 +1,10 @@
+import os
 import json
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from pymilvus import MilvusClient
+from langchain.chat_models import init_chat_model
+
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = ""
 
 def get_client():
     return MilvusClient("./Repository_monitoring.db")
@@ -145,6 +149,137 @@ def build_llm_input(
     }
 
 
+def load_llm_model(model_name: str = "microsoft/Phi-3-mini-4k-instruct"):
+    return init_chat_model(
+        model_name,
+        model_provider="huggingface",
+        temperature=0.2,
+        max_tokens=100,
+        token=os.getenv("HUGGINGFACE_TOKEN"),
+    )
+
+
+from pydantic import BaseModel, Field
+from typing import List
+
+
+class Summary(BaseModel):
+    overall_assessment: str = Field(
+        ...,
+        description="One concise sentence summarizing the overall technical state."
+    )
+
+
+class RecommendedStep(BaseModel):
+    step: str = Field(
+        ...,
+        description="Short, actionable title for the recommendation."
+    )
+    details: str = Field(
+        ...,
+        description="Clear explanation of what to do and why."
+    )
+
+
+class LLMResponse(BaseModel):
+    summary: Summary
+    recommended_next_steps: List[RecommendedStep]
+
+
+
+
+class RecommendedNextStepsResponse(BaseModel):
+    recommended_next_steps: List[str] = Field(
+        ...,
+        description="List of clear, actionable recommended next steps."
+    )
+
+
+# json_schema = {
+#     "title": "LLMResponse",
+#     "type": "object",
+#     "properties": {
+#         "summary": {
+#             "type": "object",
+#             "properties": {
+#                 "overall_assessment": {
+#                     "type": "string",
+#                     "description": "One concise sentence summarizing the overall technical state."
+#                 }
+#             },
+#             "required": ["overall_assessment"],
+#             "additionalProperties": False
+#         },
+#         "recommended_next_steps": {
+#             "type": "array",
+#             "items": {
+#                 "type": "object",
+#                 "properties": {
+#                     "step": {
+#                         "type": "string",
+#                         "description": "Short, actionable title for the recommendation."
+#                     },
+#                     "details": {
+#                         "type": "string",
+#                         "description": "Clear explanation of what to do and why."
+#                     }
+#                 },
+#                 "required": ["step", "details"],
+#                 "additionalProperties": False
+#             },
+#             "minItems": 1
+#         }
+#     },
+#     "required": ["summary", "recommended_next_steps"],
+#     "additionalProperties": False
+# }
+
+
+def generate_content(llm, llm_input):
+
+    model_with_structure = llm.with_structured_output(RecommendedNextStepsResponse, method="json_schema")
+
+    system_content = '''
+        You are a senior software engineer and technical advisor.
+        Your task is to analyze the provided insights and produce a response
+    '''
+    example_user = '''
+        {
+        "repo": "payment-service",
+        "insights": [
+            "Database schema changes are frequently deployed without rollback plans.",
+            "Memory usage spikes during peak traffic due to unbounded in-memory caching.",
+            "Production incidents take longer to resolve because logs are inconsistent across services.",
+            "Multiple services depend on outdated third-party libraries."
+        ],
+        "task": "Explain the issues and recommend practical next steps for the user."
+        }
+    '''
+    example_assistant = '''
+        {
+        "recommended_next_steps": [
+            "Require rollback plans for all database schema changes and validate them in deployment pipelines.",
+            "Introduce cache eviction policies such as TTL or LRU to prevent unbounded memory growth during peak traffic.",
+            "Standardize structured logging across services to improve observability and incident response times.",
+            "Audit and upgrade outdated third-party dependencies to reduce security and stability risks."
+        ]
+        }
+    '''
+    conversation = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": example_user},
+        {"role": "assistant", "content": example_assistant},
+        {"role": "user", "content": json.dumps(llm_input)},
+    ]
+    # print("Conversation:", conversation)    
+    response = model_with_structure.invoke(conversation, include_raw=False)
+
+    return response
+
+
+   
+
+
 if __name__=="__main__":
     client = get_client()
     load_issue_insights_collection(client)
@@ -160,5 +295,8 @@ if __name__=="__main__":
         business_insights=context["context"]["business_insights"],
         task="Explain the issues and recommend practical next steps for the user.",
     )
-    print(json.dumps(llm_input, indent=2))
+
+    llm = load_llm_model(model_name="Qwen/Qwen3-0.6B")
+    response = generate_content(llm, llm_input)
+    print(response)
 
