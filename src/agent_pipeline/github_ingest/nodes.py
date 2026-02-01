@@ -2,6 +2,8 @@ import os
 import time
 import requests
 from dotenv import load_dotenv
+import json
+from pathlib import Path
 from states import GitHubInputState, GitHubWorkingState, GitHubOutputState
 load_dotenv()
 
@@ -126,7 +128,20 @@ def assemble_issue(state: GitHubWorkingState):
     return state
 
 
-def finalize_output(state: GitHubWorkingState) -> GitHubOutputState:
+
+def write_jsonl(path: str | Path, items: list[dict]):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", encoding="utf-8") as f:
+        for item in items:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+def save_jsonl(state: GitHubWorkingState) -> GitHubOutputState:
+    output_path = "data/github_issues.jsonl"
+
+    write_jsonl(output_path, state["output"])
+
     return {
         "issues": state["output"]
     }

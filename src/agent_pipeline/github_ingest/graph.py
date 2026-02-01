@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from states import GitHubWorkingState, GitHubInputState, GitHubOutputState
-from nodes import initialize, fetch_issues, next_issue, fetch_comments, assemble_issue, finalize_output
+from nodes import initialize, fetch_issues, next_issue, fetch_comments, assemble_issue, save_jsonl
 
 def build_graph():
     graph = StateGraph(GitHubWorkingState, input=GitHubInputState, output=GitHubOutputState)
@@ -10,7 +10,7 @@ def build_graph():
     graph.add_node("next_issue", next_issue)
     graph.add_node("fetch_comments", fetch_comments)
     graph.add_node("assemble_issue", assemble_issue)
-    graph.add_node("finalize_output", finalize_output)
+    graph.add_node("save_jsonl", save_jsonl)
 
     graph.add_edge(START, "initialize")
 
@@ -27,10 +27,10 @@ def build_graph():
         should_continue,
         {
             "loop": "next_issue",
-            "done": "finalize_output",
+            "done": "save_jsonl",
         }
     )
 
-    graph.add_edge("finalize_output", END)
+    graph.add_edge("save_jsonl", END)
 
     return graph
