@@ -5,3 +5,7 @@ langgraph
 langchain-core
 
 typing-extensions
+pymilvus[milvus-lite]
+langchain_community
+langchain-huggingface
+sentence-transformers
