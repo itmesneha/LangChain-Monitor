@@ -46,7 +46,7 @@ GitHub Issues ──> Ingestion ──> Preprocessing ──> Insight Extraction
 ├── data/
 │   └── processed/                     # Processed insights & embeddings
 
-
+```
 ## Key Components
 
 ### 1. Data Ingestion
